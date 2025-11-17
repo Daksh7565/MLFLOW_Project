@@ -1,0 +1,6 @@
+.venv
+.zen
+/mlruns
+/pipelines/__pycache__
+/steps/__pycache__
+training_history.csv
