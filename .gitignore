@@ -1,6 +1,7 @@
 .venv
-.zen
+/Main dataset
 /mlruns
 /pipelines/__pycache__
 /steps/__pycache__
 training_history.csv
+/output
