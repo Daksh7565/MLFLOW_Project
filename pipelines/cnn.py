@@ -5,7 +5,7 @@ from steps.evalute import evaluator
 import logging
 import mlflow 
 def pipe(data_path:str,output_path:str):
-    # This step returns the path to the split data
+    # This step returns the path to the split
     mlflow.set_experiment("Stark")
     split_data_path = data_splitter(data_path, output_path)
     
