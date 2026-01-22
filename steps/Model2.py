@@ -22,14 +22,14 @@ def Hybrid_model(model:tf.keras.Model,path:str)-> Tuple[tf.keras.Model, tf.keras
 
     train_generator = train_datagen.flow_from_directory(
         train_dir,
-        target_size=(180,180),
+        target_size=(224,224),
         batch_size=16,
         color_mode='rgb',
         class_mode='categorical')
 
     val_generator = val_datagen.flow_from_directory(
         val_dir,
-        target_size=(180,180),
+        target_size=(224,224),
         batch_size=16,
         color_mode='rgb',
         class_mode='categorical')
@@ -62,12 +62,32 @@ def Hybrid_model(model:tf.keras.Model,path:str)-> Tuple[tf.keras.Model, tf.keras
     x = tf.keras.layers.Dense(6, activation='softmax')(x)
 
     new_model = tf.keras.Model(inputs=new_input, outputs=x)
+    # --- ADD THIS SECTION: Log Hybrid Architecture ---
+    # 1. Detailed Description
+    custom_desc = """
+    Hybrid Model Architecture Details:
+    ----------------------------------
+    Backbone 1: MobileNet (ImageNet weights, top removed)
+    Backbone 2: ResNet50 (ImageNet weights, top removed)
+    Fusion: Concatenated GlobalAveragePooling outputs
+    Head: Dense(256) -> Dense(6, Softmax)
+    """
+    
+    # 2. Capture technical summary
+    string_list = []
+    new_model.summary(print_fn=lambda x: string_list.append(x))
+    full_summary = "\n".join(string_list)
+    
+    # 3. Log to MLflow
+    complete_report = custom_desc + "\n" + "="*30 + "\n" + full_summary
+    mlflow.log_text(complete_report, "hybrid_model_architecture.txt")
+    # -------------------------------------------------
     param={"loss":'categorical_crossentropy',
         "optimizer":"adam",
         "metrics":['accuracy']}
     new_model.compile(**param)
     mlflow.log_params(param)
-    history = new_model.fit(train_generator, epochs=10, validation_data=val_generator)
+    history = new_model.fit(train_generator, epochs=1, validation_data=val_generator)
 
     # # --- ADD THIS SECTION FOR EXPLICIT MODEL LOGGING ---
     # # Log the model to MLflow with a specific artifact path

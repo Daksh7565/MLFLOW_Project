@@ -1,0 +1,15 @@
+# Ignore git data
+.git
+
+# Ignore large data (We will mount these live instead of copying them)
+Main dataset/
+output/
+mlruns/
+
+# Ignore local virtual environments (Docker creates its own)
+.venv/
+venv/
+
+# Ignore python cache files
+__pycache__/
+*.pyc

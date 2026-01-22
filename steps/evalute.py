@@ -83,9 +83,94 @@
 #     )
 #     return test_accuracy
 
+# import logging
+# import mlflow
+# from mlflow.models import infer_signature
+# from typing import Annotated
+# import tensorflow as tf
+# import os
+# from tensorflow.keras.preprocessing.image import ImageDataGenerator
+# import pandas as pd
+
+# def evaluator(
+#     model: tf.keras.Model,
+#     history: tf.keras.callbacks.History,
+#     data_path: str,
+# ) -> Annotated[float, "test_accuracy"]:
+#     """
+#     Evaluates the model on the test set and logs metrics, artifacts, and the model.
+
+#     NOTE: This function assumes it is being called within an active MLflow run.
+#     """
+#     print("--- Starting Evaluation Step ---")
+
+#     history_df = pd.DataFrame(history.history)
+#     print("Full training history:")
+#     print(history_df)
+#     logging.info(f"The training history is:\n{history_df}")
+
+#     # --- Log metrics for each epoch ---
+#     # Log the training/validation history for each epoch
+#     for epoch, row in history_df.iterrows():
+#         # The 'step' parameter tells MLflow this is a time-series metric
+#         mlflow.log_metric("epoch_accuracy", row["accuracy"], step=epoch)
+#         mlflow.log_metric("epoch_loss", row["loss"], step=epoch)
+#         mlflow.log_metric("epoch_val_accuracy", row["val_accuracy"], step=epoch)
+#         mlflow.log_metric("epoch_val_loss", row["val_loss"], step=epoch)
+
+#     # --- Log artifacts ---
+#     # Log the training history dataframe as a CSV artifact
+#     history_csv_path = "training_history.csv"
+#     history_df.to_csv(history_csv_path, index=False)
+#     mlflow.log_artifact(history_csv_path)
+
+#     print("\nEvaluating model on the test set...")
+#     test_dir = os.path.join(data_path, 'test')
+
+#     test_datagen = ImageDataGenerator(rescale=(1./255))
+#     test_generator = test_datagen.flow_from_directory(
+#         test_dir,
+#         target_size=(224, 224),
+#         batch_size=16,
+#         color_mode='rgb',
+#         class_mode='categorical',
+#         shuffle=False
+#     )
+
+#     test_loss, test_accuracy = model.evaluate(test_generator)
+#     print(f"Test Loss: {test_loss:.4f}")
+#     print(f"Test Accuracy: {test_accuracy:.4f}")
+
+#     # Log final test metrics
+#     mlflow.log_metric("final_test_accuracy", test_accuracy)
+#     mlflow.log_metric("final_test_loss", test_loss)
+
+#     # --- CORRECTED CODE ---
+#     # Convert the DataFrame to a string before logging it as a text artifact
+#     report_text = history_df.to_string()
+#     mlflow.log_text(report_text, "training_classification_report.txt")
+#     # --- END OF CORRECTION ---
+
+#     # --- Log the model ---
+#     # Infer the model signature
+#     sample_batch, _ = next(iter(test_generator))
+#     signature = infer_signature(sample_batch, model.predict(sample_batch))
+
+#     # Log the model to MLflow
+#     model_info = mlflow.tensorflow.log_model(
+#         model=model,
+#         signature=signature,
+#         input_example=sample_batch,
+#         artifact_path="hybrid_model",  # This will be the folder name in MLflow artifacts
+#         registered_model_name="hybrid_image_classifier" # This name appears in the MLflow Model Registry
+#     )
+#     print(f"Model logged with URI: {model_info.model_uri}")
+
+#     return test_accuracy
 import logging
 import mlflow
 from mlflow.models import infer_signature
+from mlflow.tracking import MlflowClient  # <--- NEW IMPORT
 from typing import Annotated
 import tensorflow as tf
 import os
@@ -98,39 +183,28 @@ def evaluator(
     data_path: str,
 ) -> Annotated[float, "test_accuracy"]:
     """
-    Evaluates the model on the test set and logs metrics, artifacts, and the model.
-
-    NOTE: This function assumes it is being called within an active MLflow run.
+    Evaluates the model and updates the MLflow Registry with a detailed description.
     """
     print("--- Starting Evaluation Step ---")
 
     history_df = pd.DataFrame(history.history)
-    print("Full training history:")
-    print(history_df)
-    logging.info(f"The training history is:\n{history_df}")
-
-    # --- Log metrics for each epoch ---
-    # Log the training/validation history for each epoch
+    
+    # --- Logging Metrics ---
     for epoch, row in history_df.iterrows():
-        # The 'step' parameter tells MLflow this is a time-series metric
         mlflow.log_metric("epoch_accuracy", row["accuracy"], step=epoch)
         mlflow.log_metric("epoch_loss", row["loss"], step=epoch)
         mlflow.log_metric("epoch_val_accuracy", row["val_accuracy"], step=epoch)
         mlflow.log_metric("epoch_val_loss", row["val_loss"], step=epoch)
 
-    # --- Log artifacts ---
-    # Log the training history dataframe as a CSV artifact
-    history_csv_path = "training_history.csv"
-    history_df.to_csv(history_csv_path, index=False)
-    mlflow.log_artifact(history_csv_path)
-
+    # --- Evaluating on Test Set ---
     print("\nEvaluating model on the test set...")
     test_dir = os.path.join(data_path, 'test')
 
+    # Ensure target_size matches training (224, 224)
     test_datagen = ImageDataGenerator(rescale=(1./255))
     test_generator = test_datagen.flow_from_directory(
         test_dir,
-        target_size=(180, 180),
+        target_size=(224, 224), 
         batch_size=16,
         color_mode='rgb',
         class_mode='categorical',
@@ -141,29 +215,64 @@ def evaluator(
     print(f"Test Loss: {test_loss:.4f}")
     print(f"Test Accuracy: {test_accuracy:.4f}")
 
-    # Log final test metrics
     mlflow.log_metric("final_test_accuracy", test_accuracy)
     mlflow.log_metric("final_test_loss", test_loss)
 
-    # --- CORRECTED CODE ---
-    # Convert the DataFrame to a string before logging it as a text artifact
-    report_text = history_df.to_string()
-    mlflow.log_text(report_text, "training_classification_report.txt")
-    # --- END OF CORRECTION ---
-
-    # --- Log the model ---
-    # Infer the model signature
+    # --- Log the Model ---
     sample_batch, _ = next(iter(test_generator))
     signature = infer_signature(sample_batch, model.predict(sample_batch))
+    
+    registered_name = "hybrid_image_classifier"
 
-    # Log the model to MLflow
     model_info = mlflow.tensorflow.log_model(
         model=model,
         signature=signature,
         input_example=sample_batch,
-        artifact_path="hybrid_model",  # This will be the folder name in MLflow artifacts
-        registered_model_name="hybrid_image_classifier" # This name appears in the MLflow Model Registry
+        artifact_path="hybrid_model",
+        registered_model_name=registered_name
     )
-    print(f"Model logged with URI: {model_info.model_uri}")
+
+    # ---------------------------------------------------------
+    # --- STEP 2: GENERATE AND UPDATE MODEL DESCRIPTION ---
+    # ---------------------------------------------------------
+    
+    # 1. Define the Description Text
+    model_description = f"""
+### 🌿 Model Overview
+**Architecture:** Hybrid CNN (MobileNetV2 + ResNet50 Fusion)
+**Task:** Crop Disease Classification
+**Input Shape:** (224, 224, 3)
+**Preprocessing:** Rescaling 1./255
+
+### 📊 Performance Metrics (Test Set)
+| Metric | Value |
+|--------|-------|
+| **Accuracy** | `{test_accuracy:.2%}` |
+| **Loss** | `{test_loss:.4f}` |
+
+### ℹ️ Usage Instructions
+1. Resize input images to **224x224**.
+2. Normalize pixel values by dividing by **255.0**.
+3. Output is a vector of 6 probabilities.
+
+### 🏷️ Classes
+1. Aphids
+2. Army worm
+3. Bacterial Blight
+4. Healthy
+5. Powdery Mildew
+6. Target spot
+    """
+
+    # 2. Use MlflowClient to update the Registered Model Version
+    print(f"Updating description for Model: {registered_name}, Version: {model_info.registered_model_version}")
+    
+    client = MlflowClient()
+    client.update_model_version(
+        name=registered_name,
+        version=model_info.registered_model_version,
+        description=model_description
+    )
+    # ---------------------------------------------------------
 
     return test_accuracy
