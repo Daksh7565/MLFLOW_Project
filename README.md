@@ -1,6 +1,6 @@
 # 🌾 **MLOps Project: End-to-End Crop Disease Classification**
 
-1 A production-ready MLOps system for automating the training, evaluation, deployment, and monitoring of deep learning models for **crop disease classification**.
+A production-ready MLOps system for automating the training, evaluation, deployment, and monitoring of deep learning models for **crop disease classification**.
 The system integrates **ZenML**, **MLflow**, and **Streamlit** to deliver a complete and scalable pipeline from data ingestion to real-time inference.
 
 ---
