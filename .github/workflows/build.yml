@@ -16,6 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
+          
       - name: Run SonarScanner
         run: |
           sonar-scanner -D"sonar.projectKey=Titan-Stark" -D"sonar.sources=." -D"sonar.host.url=http://localhost:9000" -D"sonar.token=${{ secrets.SONAR_TOKEN }}"
